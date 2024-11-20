@@ -14,10 +14,9 @@ int main()
 
     std::thread serverThread(StartServer);
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    //std::thread clientThread(StartClient);
-     //Ожидаем завершения обоих потоков
+    std::thread clientThread(StartClient);
     serverThread.join();
-    //clientThread.join();
+    clientThread.join();
 
     WSACleanup();
 }
