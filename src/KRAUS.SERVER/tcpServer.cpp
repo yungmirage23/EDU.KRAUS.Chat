@@ -7,16 +7,19 @@
 #include <stdio.h>
 #include "tcpServer.h"
 #include <iostream>
+#include <string>
+#include <cstring>
 using namespace std;
 
 // Need to link with Ws2_32.lib
 //#pragma comment (lib, "Ws2_32.lib")
 // #pragma comment (lib, "Mswsock.lib")
 
-#define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "5000"
+int StopServer() {
+    return 1;
+}
 
-int StartServer()
+int StartServer(char* listenAddress, int listenPort, int messageBufferSize)
 {
     WSADATA wsaData;
     int iResult;
@@ -28,16 +31,8 @@ int StartServer()
     struct addrinfo hints;
 
     int iSendResult;
-    char recvbuf[DEFAULT_BUFLEN];
-    int recvbuflen = DEFAULT_BUFLEN;
-
-    //// Initialize Winsock
-    //iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    //if (iResult != 0) {
-    //    cout << "[Server] WSAStartup failed with error: " << iResult << endl;
-    //    return 1;
-    //}
-
+    char* recvbuf = new char[messageBufferSize];
+    
     ZeroMemory(&hints, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -45,7 +40,9 @@ int StartServer()
     hints.ai_flags = AI_PASSIVE;
 
     // Resolve the server address and port
-    iResult = getaddrinfo("192.168.5.4", DEFAULT_PORT, &hints, &result);
+    std::string portString = std::to_string(listenPort);
+    const char* portChar = portString.c_str();
+    iResult = getaddrinfo(listenAddress, portChar, &hints, &result);
     if (iResult != 0) {
         cout << "[Server] getaddrinfo failed with error: "<< iResult << endl;
         return 1;
@@ -103,7 +100,7 @@ int StartServer()
     // Receive until the peer shuts down the connection
     do {
 
-        iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+        iResult = recv(ClientSocket, recvbuf, messageBufferSize, 0);
         if (iResult > 0) {
             cout << "[Server] Bytes received: " << iResult << endl;
             // Echo the buffer back to the sender

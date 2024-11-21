@@ -4,10 +4,11 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "5000"
+int StopClient() {
+    return 1;
+}
 
-int StartClient() {
+int StartClient(char* serverAddres, int port, int messageBufferSize) {
     // Create a socket
     SOCKET clientSocket;
     clientSocket = INVALID_SOCKET;
@@ -30,8 +31,8 @@ int StartClient() {
 
     sockaddr_in clientService;
     clientService.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.5.4", &clientService.sin_addr);
-    clientService.sin_port = htons(5000);  // Use the same port as the server
+    inet_pton(AF_INET, serverAddres, &clientService.sin_addr);
+    clientService.sin_port = htons(port);  // Use the same port as the server
 
     // Use the connect function
     if (connect(clientSocket, reinterpret_cast<SOCKADDR*>(&clientService), sizeof(clientService)) == SOCKET_ERROR) {
@@ -46,10 +47,10 @@ int StartClient() {
 
 
     // Sending data to the server
-    char buffer[200];
+    char* buffer = new char[messageBufferSize];
     std::cout << "Enter the message: ";
-    std::cin.getline(buffer, 200);
-    int sbyteCount = send(clientSocket, buffer, 200, 0);
+    std::cin.getline(buffer, messageBufferSize);
+    int sbyteCount = send(clientSocket, buffer, messageBufferSize, 0);
     if (sbyteCount == SOCKET_ERROR) {
         std::cout << "[Client] Client send error: " << WSAGetLastError() << std::endl;
         return -1;
@@ -59,8 +60,8 @@ int StartClient() {
     }
 
     // Receiving data from the server
-    char receiveBuffer[200];
-    int rbyteCount = recv(clientSocket, receiveBuffer, 200, 0);
+    char* receiveBuffer = new char[messageBufferSize];
+    int rbyteCount = recv(clientSocket, receiveBuffer, messageBufferSize, 0);
     if (rbyteCount < 0) {
         std::cout << "[Client] Client recv error: " << WSAGetLastError() << std::endl;
         return 0;

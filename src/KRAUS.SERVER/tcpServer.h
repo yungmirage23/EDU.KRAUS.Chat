@@ -2,6 +2,6 @@
 #define TCP_SERVER_H // Визначити макрос TCP_SERVER_H
 #define MATH_UTILS_H 2
 // Тіло заголовочного файлу
-int StartServer();
-
+int StartServer(char* listenAddress, int listenPort, int messageBufferSize);
+int StopServer();
 #endif  // Завершити умовну перевірку

@@ -2,6 +2,6 @@
 #define TCP_CLIENT_H // Визначити макрос TTCP_CLIENT_H
 
 // Тіло заголовочного файлу
-int StartClient();
-
+int StartClient(char* serverAddres, int port, int messageBufferSize);
+int StopClient();
 #endif  // Завершити умовну перевірку
