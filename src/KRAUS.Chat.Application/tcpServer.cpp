@@ -15,10 +15,12 @@ using namespace std;
 //#pragma comment (lib, "Ws2_32.lib")
 // #pragma comment (lib, "Mswsock.lib")
 
+//Функція яку будемо реалізовувати пізніше
 int StopServer() {
     return 1;
 }
 
+//Функція запуску сервера
 int StartServer(char* listenAddress, int listenPort, int messageBufferSize)
 {
     WSADATA wsaData;
