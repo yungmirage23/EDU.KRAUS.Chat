@@ -1,135 +1,132 @@
 #include "pch.h"
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "tcpServer.h"
 #include <iostream>
 #include <string>
-#include <cstring>
-using namespace std;
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <thread>
+#include "tcpServer.h"
 
-//Функція яку будемо реалізовувати пізніше
-int StopServer() {
-    return 0;
-}
+#pragma comment(lib, "Ws2_32.lib")
 
-//Функція запуску сервера
-int StartServer(char* listenAddress, int listenPort, int messageBufferSize)
-{
-    WSADATA wsaData;
-    int iResult;
-
-    SOCKET ListenSocket = INVALID_SOCKET;
-    SOCKET ClientSocket = INVALID_SOCKET;
-
-    struct addrinfo* result = NULL;
-    struct addrinfo hints;
-
-    int iSendResult;
-    char* recvbuf = new char[messageBufferSize];
-    
+TcpServer::TcpServer(int bufferSize)
+    : ListenSocket(INVALID_SOCKET), ClientSocket(INVALID_SOCKET), result(nullptr), messageBufferSize(bufferSize) {
+    recvbuf = new char[messageBufferSize];
     ZeroMemory(&hints, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
+}
 
-    // Resolve the server address and port
+TcpServer::~TcpServer() {
+    delete[] recvbuf;
+    Cleanup();
+}
+
+bool TcpServer::Initialize() {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cout << "[Server] WSAStartup failed!" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool TcpServer::BindAndListen(const std::string& listenAddress, int listenPort) {
+    
     std::string portString = std::to_string(listenPort);
     const char* portChar = portString.c_str();
-    iResult = getaddrinfo(listenAddress, portChar, &hints, &result);
-    if (iResult != 0) {
-        cout << "[Server] getaddrinfo failed with error: "<< iResult << endl;
-        return 1;
-    }
-    
 
-    // Create a SOCKET for the server to listen for client connections.
+    int iResult = getaddrinfo(listenAddress.c_str(), portChar, &hints, &result);
+    if (iResult != 0) {
+        std::cout << "[Server] getaddrinfo failed with error: " << iResult << std::endl;
+        return false;
+    }
+
     ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
-        cout << "[Server] socket failed with error: " << WSAGetLastError() << endl;
+        std::cout << "[Server] socket failed with error: " << WSAGetLastError() << std::endl;
         freeaddrinfo(result);
-        return 1;
-    }
-    else {
-        cout << "[Server] socket is OK!" << endl;
+        return false;
     }
 
-    // Setup the TCP listening socket
     iResult = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
-    if (iResult == SOCKET_ERROR) {
-        cout << "[Server] bind failed with error: " << WSAGetLastError() << endl;
-        freeaddrinfo(result);
-        closesocket(ListenSocket);
-        return 1;
-    }
-    else {
-        cout << "[Server] binded socket!" << endl;
-    }
-
     freeaddrinfo(result);
+    if (iResult == SOCKET_ERROR) {
+        std::cout << "[Server] bind failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(ListenSocket);
+        return false;
+    }
 
     iResult = listen(ListenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR) {
-        cout << "[Server] listen failed with error : " << WSAGetLastError() << endl;
+        std::cout << "[Server] listen failed with error: " << WSAGetLastError() << std::endl;
         closesocket(ListenSocket);
-        return 1;
-    }
-    else {
-        cout << "[Server] listening to new connections!" << endl;
-    }
-    // Accept a client socket
-    ClientSocket = accept(ListenSocket, NULL, NULL);
-    if (ClientSocket == INVALID_SOCKET) {
-        cout << "[Server] accept failed with error: " << WSAGetLastError() << endl;
-        closesocket(ListenSocket);
-        return 1;
-    }
-    else {
-        cout << "[Server] accepted new client!" << endl;
+        return false;
     }
 
-    // No longer need server socket
-    closesocket(ListenSocket);
+    std::cout << "[Server] Server is listening on port " << listenPort << std::endl;
+    return true;
+}
 
-    // Receive until the peer shuts down the connection
+void TcpServer::RunServer() {
+
+    std::cout << "[Server] Server is running and waiting for connections..." << std::endl;
+
+    while (true) {
+        SOCKET clientSocket = accept(ListenSocket, NULL, NULL);
+        if (clientSocket == INVALID_SOCKET) {
+            std::cout << "[Server] Accept failed with error: " << WSAGetLastError() << std::endl;
+            continue; // Продолжить ожидание новых подключений
+        }
+
+        std::cout << "[Server] Accepted new client connection!" << std::endl;
+
+        // Обработка каждого клиента в отдельном потоке
+        std::thread clientThread(&TcpServer::HandleClientConnection, this, clientSocket);
+        clientThread.detach(); // Отсоединяем поток для независимой обработки
+    }
+}
+
+void TcpServer::HandleClientConnection(SOCKET clientSocket) {
+   
+    char* buffer = new char[messageBufferSize];
+    int iResult;
+
     do {
-
-        iResult = recv(ClientSocket, recvbuf, messageBufferSize, 0);
+        // Приём данных от клиента
+        iResult = recv(clientSocket, buffer, messageBufferSize, 0);
         if (iResult > 0) {
-            cout << "[Server] Bytes received: " << iResult << endl;
-            // Echo the buffer back to the sender
-            iSendResult = send(ClientSocket, recvbuf, iResult, 0);
-            if (iSendResult == SOCKET_ERROR) {
-                cout << "[Server] send failed with error: " << WSAGetLastError() << endl;
-                closesocket(ClientSocket);
-                return 1;
-            }
-            cout << "[Server] Bytes sent: " << iSendResult << endl;
-        }
-        else if (iResult == 0)
-            cout << "[Server] Connection closing... "<< endl;
-        else {
-            cout << "[Server] recv failed with error: " << WSAGetLastError << endl;
-            closesocket(ClientSocket);
-            return 1;
-        }
+            std::cout << "[Server] Bytes received: " << iResult << std::endl;
 
+            // Эхо-сообщение обратно клиенту
+            int iSendResult = send(clientSocket, buffer, iResult, 0);
+            if (iSendResult == SOCKET_ERROR) {
+                std::cout << "[Server] Send failed with error: " << WSAGetLastError() << std::endl;
+                break;
+            }
+            std::cout << "[Server] Bytes sent: " << iSendResult << std::endl;
+        }
+        else if (iResult == 0) {
+            std::cout << "[Server] Connection closing..." << std::endl;
+        }
+        else {
+            std::cout << "[Server] Receive failed with error: " << WSAGetLastError() << std::endl;
+            break;
+        }
     } while (iResult > 0);
 
-    // shutdown the connection since we're done
-    iResult = shutdown(ClientSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        cout << "[Server] shutdown failed with error :" << WSAGetLastError() << endl;
-        closesocket(ClientSocket);
-        return 1;
+    // Закрытие сокета клиента
+    closesocket(clientSocket);
+    delete[] buffer;
+    std::cout << "[Server] Client connection closed." << std::endl;
+}
+
+void TcpServer::Cleanup() {
+    if (ListenSocket != INVALID_SOCKET) {
+        closesocket(ListenSocket);
     }
-
-    // cleanup
-    closesocket(ClientSocket);
+    if (ClientSocket != INVALID_SOCKET) {
+        closesocket(ClientSocket);
+    }
     WSACleanup();
-
-    return 0;
 }

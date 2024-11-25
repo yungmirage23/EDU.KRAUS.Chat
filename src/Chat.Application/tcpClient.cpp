@@ -36,13 +36,13 @@ int StartClient(char* serverAddres, int port, int messageBufferSize) {
 
     // Use the connect function
     if (connect(clientSocket, reinterpret_cast<SOCKADDR*>(&clientService), sizeof(clientService)) == SOCKET_ERROR) {
-        std::cout << "[Client] Client: connect() - Failed to connect: " << WSAGetLastError() << std::endl;
+        std::cout << "[Client] Connect() - Failed to connect: " << WSAGetLastError() << std::endl;
         WSACleanup();
         return 0;
     }
     else {
-        std::cout << "[Client] Client: Connect() is OK!" << std::endl;
-        std::cout << "[Client] Client: Can start sending and receiving data..." << std::endl;
+        std::cout << "[Client] Connect() is OK!" << std::endl;
+        std::cout << "[Client] Can start sending and receiving data..." << std::endl;
     }
 
 
@@ -52,22 +52,22 @@ int StartClient(char* serverAddres, int port, int messageBufferSize) {
     std::cin.getline(buffer, messageBufferSize);
     int sbyteCount = send(clientSocket, buffer, messageBufferSize, 0);
     if (sbyteCount == SOCKET_ERROR) {
-        std::cout << "[Client] Client send error: " << WSAGetLastError() << std::endl;
+        std::cout << "[Client] Send error: " << WSAGetLastError() << std::endl;
         return -1;
     }
     else {
-        std::cout << "[Client] Client: Sent " << sbyteCount << " bytes" << std::endl;
+        std::cout << "[Client] Sent " << sbyteCount << " bytes" << std::endl;
     }
 
     // Receiving data from the server
     char* receiveBuffer = new char[messageBufferSize];
     int rbyteCount = recv(clientSocket, receiveBuffer, messageBufferSize, 0);
     if (rbyteCount < 0) {
-        std::cout << "[Client] Client recv error: " << WSAGetLastError() << std::endl;
+        std::cout << "[Client] Receive error: " << WSAGetLastError() << std::endl;
         return 0;
     }
     else {
-        std::cout << "[Client] Client: Received data: " << receiveBuffer << std::endl;
+        std::cout << "[Client] Received data: " << receiveBuffer << std::endl;
     }
 
     return 0;
