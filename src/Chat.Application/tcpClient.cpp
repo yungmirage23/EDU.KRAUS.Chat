@@ -4,71 +4,83 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-int StopClient() {
-    return 0;
+
+
+TcpChatClient::TcpChatClient(int bufferSize) 
+    : clientSocket(INVALID_SOCKET), bufferSize(bufferSize), running(false) {
 }
 
-int StartClient(char* serverAddres, int port, int messageBufferSize) {
-    // Create a socket
-    SOCKET clientSocket;
-    clientSocket = INVALID_SOCKET;
-    // Create a socket
-    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (clientSocket == INVALID_SOCKET) {
-        std::cerr << "[Client] Socket creation failed." << WSAGetLastError() << std::endl;
-        return 1;
-    }
+TcpChatClient::~TcpChatClient() {
+    Disconnect();
+}
 
-    // Check for socket creation success
-    if (clientSocket == INVALID_SOCKET) {
-        std::cout << "[Client] Error at socket(): " << WSAGetLastError() << std::endl;
-        WSACleanup();
-        return 0;
-    }
-    else {
-        std::cout << "[Client] Socket is OK!" << std::endl;
-    }
-
-    sockaddr_in clientService;
-    clientService.sin_family = AF_INET;
-    inet_pton(AF_INET, serverAddres, &clientService.sin_addr);
-    clientService.sin_port = htons(port);  // Use the same port as the server
-
-    // Use the connect function
-    if (connect(clientSocket, reinterpret_cast<SOCKADDR*>(&clientService), sizeof(clientService)) == SOCKET_ERROR) {
-        std::cout << "[Client] Connect() - Failed to connect: " << WSAGetLastError() << std::endl;
-        WSACleanup();
-        return 0;
-    }
-    else {
-        std::cout << "[Client] Connect() is OK!" << std::endl;
-        std::cout << "[Client] Can start sending and receiving data..." << std::endl;
-    }
-
-
-    // Sending data to the server
-    char* buffer = new char[messageBufferSize];
-    std::cout << "Enter the message: ";
-    std::cin.getline(buffer, messageBufferSize);
-    int sbyteCount = send(clientSocket, buffer, messageBufferSize, 0);
+// Sending data to the server
+bool TcpChatClient::Send(const char* message) {
+    
+    int sbyteCount = send(clientSocket, message, strlen(message), 0);
     if (sbyteCount == SOCKET_ERROR) {
         std::cout << "[Client] Send error: " << WSAGetLastError() << std::endl;
-        return -1;
+        return false;
     }
     else {
         std::cout << "[Client] Sent " << sbyteCount << " bytes" << std::endl;
     }
+    return true;
+}
 
-    // Receiving data from the server
-    char* receiveBuffer = new char[messageBufferSize];
-    int rbyteCount = recv(clientSocket, receiveBuffer, messageBufferSize, 0);
-    if (rbyteCount < 0) {
-        std::cout << "[Client] Receive error: " << WSAGetLastError() << std::endl;
-        return 0;
+bool TcpChatClient::Disconnect() {
+    if (clientSocket != INVALID_SOCKET) {
+        running = false;
+        closesocket(clientSocket);
+        if (receivingTask.joinable()) {
+            receivingTask.join();
+        }
+       
+        clientSocket = INVALID_SOCKET;
     }
-    else {
-        std::cout << "[Client] Received data: " << receiveBuffer << std::endl;
+    return true;
+}
+
+bool TcpChatClient::Connect(char* serverAddress, int port) {
+
+    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == INVALID_SOCKET) {
+        std::cerr << "[Client] Socket creation failed." << std::endl;
+        return false;
     }
 
-    return 0;
+    //u_long mode = 1; // 1 = неблокирующий режим
+    //ioctlsocket(clientSocket, FIONBIO, &mode);
+
+    sockaddr_in serverAddr = {};
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(port);
+    inet_pton(AF_INET, serverAddress, &serverAddr.sin_addr);
+
+    if (connect(clientSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        std::cerr << "[Client] Connection to server failed." << std::endl;
+        closesocket(clientSocket);
+        return false;
+    }
+
+    running = true;
+    receivingTask = std::thread(&TcpChatClient::RunReceivingLoop, this);
+    return true;
+}
+
+bool TcpChatClient::RunReceivingLoop() {
+
+    char* buffer = new char[bufferSize];
+    while (running) {
+        int bytesReceived = recv(clientSocket, buffer, bufferSize, 0);
+        if (bytesReceived > 0) {
+            std::cout << "[Client] Received: " << std::string(buffer, bytesReceived) << std::endl;
+        }
+        else if (bytesReceived == 0 || WSAGetLastError() != WSAEWOULDBLOCK) {
+            std::cerr << "[Client] Connection closed or error occurred." << std::endl;
+            break;
+        }
+    }
+    delete[] buffer;
+    return true;
 }

@@ -76,49 +76,47 @@ void TcpServer::RunServer() {
         SOCKET clientSocket = accept(ListenSocket, NULL, NULL);
         if (clientSocket == INVALID_SOCKET) {
             std::cout << "[Server] Accept failed with error: " << WSAGetLastError() << std::endl;
-            continue; // Продолжить ожидание новых подключений
+            continue; // Очікування нових підключень
         }
 
         std::cout << "[Server] Accepted new client connection!" << std::endl;
 
-        // Обработка каждого клиента в отдельном потоке
+        // Обробка клієнта в окремому потоці
         std::thread clientThread(&TcpServer::HandleClientConnection, this, clientSocket);
-        clientThread.detach(); // Отсоединяем поток для независимой обработки
+        clientThread.detach(); // Від'єднуємо потік для незалежного виконання 
     }
 }
 
 void TcpServer::HandleClientConnection(SOCKET clientSocket) {
    
     char* buffer = new char[messageBufferSize];
-    int iResult;
+    int bytesReceived;
 
     do {
-        // Приём данных от клиента
-        iResult = recv(clientSocket, buffer, messageBufferSize, 0);
-        if (iResult > 0) {
-            std::cout << "[Server] Bytes received: " << iResult << std::endl;
+        // Читання данних від клієнта
+        bytesReceived = recv(clientSocket, buffer, messageBufferSize, 0);
+        if (bytesReceived > 0) {
+            std::cout << "[Server] Received: " << std::string(buffer, bytesReceived) << std::endl;
 
-            // Эхо-сообщение обратно клиенту
-            int iSendResult = send(clientSocket, buffer, iResult, 0);
+            // Надсилаємо клієнту повідомлення назад
+            int iSendResult = send(clientSocket, buffer, bytesReceived, 0);
             if (iSendResult == SOCKET_ERROR) {
                 std::cout << "[Server] Send failed with error: " << WSAGetLastError() << std::endl;
                 break;
             }
-            std::cout << "[Server] Bytes sent: " << iSendResult << std::endl;
         }
-        else if (iResult == 0) {
-            std::cout << "[Server] Connection closing..." << std::endl;
+        else if (bytesReceived == 0 || WSAGetLastError() != WSAEWOULDBLOCK) {
+            std::cerr << "[Server] Connection closed or error occurred." << std::endl;
         }
         else {
             std::cout << "[Server] Receive failed with error: " << WSAGetLastError() << std::endl;
             break;
         }
-    } while (iResult > 0);
+    } while (bytesReceived > 0);
 
-    // Закрытие сокета клиента
+    // Закриття сокета клієнта
     closesocket(clientSocket);
     delete[] buffer;
-    std::cout << "[Server] Client connection closed." << std::endl;
 }
 
 void TcpServer::Cleanup() {
@@ -128,5 +126,4 @@ void TcpServer::Cleanup() {
     if (ClientSocket != INVALID_SOCKET) {
         closesocket(ClientSocket);
     }
-    WSACleanup();
 }
