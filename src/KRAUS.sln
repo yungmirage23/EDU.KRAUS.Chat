@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34622.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KRAUS.Chat.Presentation", "KRAUS.Chat.Presentation\KRAUS.Chat.Presentation.vcxproj", "{4707D8C1-F8AF-4A28-91CF-84571718B999}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chat.Presentation", "Chat.Presentation\Chat.Presentation.vcxproj", "{4707D8C1-F8AF-4A28-91CF-84571718B999}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KRAUS.Chat.Application", "KRAUS.Chat.Application\KRAUS.Chat.Application.vcxproj", "{B84ABB1A-5ECC-4690-8937-1D2CEF453C23}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chat.Application", "Chat.Application\Chat.Application.vcxproj", "{B84ABB1A-5ECC-4690-8937-1D2CEF453C23}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
