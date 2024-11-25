@@ -1,4 +1,3 @@
-#define WIN32_LEAN_AND_MEAN
 #include "pch.h"
 #include <windows.h>
 #include <winsock2.h>
@@ -11,13 +10,9 @@
 #include <cstring>
 using namespace std;
 
-// Need to link with Ws2_32.lib
-//#pragma comment (lib, "Ws2_32.lib")
-// #pragma comment (lib, "Mswsock.lib")
-
 //Функція яку будемо реалізовувати пізніше
 int StopServer() {
-    return 1;
+    return 0;
 }
 
 //Функція запуску сервера

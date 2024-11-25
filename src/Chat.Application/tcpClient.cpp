@@ -5,7 +5,7 @@
 #include <ws2tcpip.h>
 
 int StopClient() {
-    return 1;
+    return 0;
 }
 
 int StartClient(char* serverAddres, int port, int messageBufferSize) {
