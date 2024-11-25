@@ -132,7 +132,7 @@
     <ClCompile Include="Chat.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\KRAUS.Chat.Application\KRAUS.Chat.Application.vcxproj">
+    <ProjectReference Include="..\Chat.Application\Chat.Application.vcxproj">
       <Project>{b84abb1a-5ecc-4690-8937-1d2cef453c23}</Project>
     </ProjectReference>
   </ItemGroup>

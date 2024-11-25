@@ -16,14 +16,9 @@ int main()
     int port = 5000;
     int bufferSize = 1024;
 
-    StartServer(address, port, bufferSize);
-    StartClient(address,port,bufferSize);
+    StartClient(address, port, bufferSize);
 
-    //std::thread serverThread(StartServer, address, port, bufferSize);
-    //std::this_thread::sleep_for(std::chrono::seconds(1));
-    //std::thread clientThread(StartClient, address, port, bufferSize);
-    //serverThread.join();
-    //clientThread.join();
+    StartServer(address, port, bufferSize);
 
     WSACleanup();
 }
