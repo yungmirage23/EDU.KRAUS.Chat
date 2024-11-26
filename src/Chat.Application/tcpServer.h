@@ -9,12 +9,15 @@
 class TcpServer {
 private:
     SOCKET ListenSocket;        // Сокет для прослуховування
-    SOCKET ClientSocket;        // Сокет для клієнта
-    WSADATA wsaData;            // Дані WSA
     struct addrinfo* result;    // Результат налаштування адреси
     struct addrinfo hints;      // Параметри для getaddrinfo
+
     char* recvbuf;              // Буфер для отримання даних
     int messageBufferSize;      // Розмір буфера
+
+    std::atomic<bool> running;
+    std::thread listeningTask;
+    void RunConnectionPulling();
 
 public:
     /**
@@ -29,32 +32,21 @@ public:
     ~TcpServer();
 
     /**
-     * Ініціалізація WSA.
-     * @return true, якщо успішно, інакше false.
-     */
-    bool Initialize();
-
-    /**
      * Прив’язка сокета та перехід у режим прослуховування.
      * @param listenAddress IP-адреса для прослуховування.
      * @param listenPort Порт для прослуховування.
      * @return true, якщо успішно, інакше false.
      */
-    bool BindAndListen(const std::string& listenAddress, int listenPort);
-
-    /**
-     * Очікування підключення клієнта.
-     * @return true, якщо клієнт успішно підключений, інакше false.
-     */
-    void RunServer();
+    bool Bind(const std::string& listenAddress, int listenPort);
+    bool Listen();
 
     /**
      * Обробка взаємодії з клієнтом.
      */
-    void HandleClientConnection(SOCKET clientSocket);
+    void HandleClientConnection(SOCKET clientSocket, char* clientAddress, int port);
 
     /**
      * Очищення ресурсів.
      */
-    void Cleanup();
+    void Close();
 };

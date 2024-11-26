@@ -9,7 +9,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 TcpServer::TcpServer(int bufferSize)
-    : ListenSocket(INVALID_SOCKET), ClientSocket(INVALID_SOCKET), result(nullptr), messageBufferSize(bufferSize) {
+    : ListenSocket(INVALID_SOCKET), result(nullptr), messageBufferSize(bufferSize) {
     recvbuf = new char[messageBufferSize];
     ZeroMemory(&hints, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -20,18 +20,10 @@ TcpServer::TcpServer(int bufferSize)
 
 TcpServer::~TcpServer() {
     delete[] recvbuf;
-    Cleanup();
+    Close();
 }
 
-bool TcpServer::Initialize() {
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        std::cout << "[Server] WSAStartup failed!" << std::endl;
-        return false;
-    }
-    return true;
-}
-
-bool TcpServer::BindAndListen(const std::string& listenAddress, int listenPort) {
+bool TcpServer::Bind(const std::string& listenAddress, int listenPort) {
     
     std::string portString = std::to_string(listenPort);
     const char* portChar = portString.c_str();
@@ -56,38 +48,66 @@ bool TcpServer::BindAndListen(const std::string& listenAddress, int listenPort) 
         closesocket(ListenSocket);
         return false;
     }
+}
 
-    iResult = listen(ListenSocket, SOMAXCONN);
+bool TcpServer::Listen() {
+
+    int iResult = listen(ListenSocket, SOMAXCONN);
     if (iResult == SOCKET_ERROR) {
         std::cout << "[Server] listen failed with error: " << WSAGetLastError() << std::endl;
         closesocket(ListenSocket);
         return false;
     }
 
-    std::cout << "[Server] Server is listening on port " << listenPort << std::endl;
+    // Виводимо на яку адресу був привязаний сокет
+    sockaddr_in boundAddr = {};
+    int addrLen = sizeof(boundAddr);
+    if (getsockname(ListenSocket, (sockaddr*)&boundAddr, &addrLen) == SOCKET_ERROR) {
+        std::cerr << "[Server] getsockname failed: " << WSAGetLastError() << "\n";
+        closesocket(ListenSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    // Выводим информацию о сокете
+    char ipStr[INET_ADDRSTRLEN] = {};
+    inet_ntop(AF_INET, &boundAddr.sin_addr, ipStr, sizeof(ipStr));
+    std::cout << "[Server] Listening on: " << ipStr
+        << ", port: " << ntohs(boundAddr.sin_port) << "\n";
+
+    
+    // Прослуховування нових підключень в окремому потоці
+    listeningTask = std::thread(&TcpServer::RunConnectionPulling, this);
+    listeningTask.detach();
+
     return true;
 }
 
-void TcpServer::RunServer() {
+void TcpServer::RunConnectionPulling() {
 
     std::cout << "[Server] Server is running and waiting for connections..." << std::endl;
+    running = true;
+    while (running) {
 
-    while (true) {
-        SOCKET clientSocket = accept(ListenSocket, NULL, NULL);
+        sockaddr_in clientAddr;
+        socklen_t clientAddrLen = sizeof(clientAddr);
+        SOCKET clientSocket = accept(ListenSocket, (sockaddr*)&clientAddr, &clientAddrLen);
         if (clientSocket == INVALID_SOCKET) {
             std::cout << "[Server] Accept failed with error: " << WSAGetLastError() << std::endl;
             continue; // Очікування нових підключень
         }
-
-        std::cout << "[Server] Accepted new client connection!" << std::endl;
+        char clientIP[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, INET_ADDRSTRLEN);
+        int clientPort = ntohs(clientAddr.sin_port);
+        std::cout << "[Server] Accepted new client connection from! " << clientIP << ':'<< clientPort << std::endl;
 
         // Обробка клієнта в окремому потоці
-        std::thread clientThread(&TcpServer::HandleClientConnection, this, clientSocket);
+        std::thread clientThread(&TcpServer::HandleClientConnection, this, clientSocket, clientIP, clientPort);
         clientThread.detach(); // Від'єднуємо потік для незалежного виконання 
     }
 }
 
-void TcpServer::HandleClientConnection(SOCKET clientSocket) {
+void TcpServer::HandleClientConnection(SOCKET clientSocket, char* clientAddress, int port) {
    
     char* buffer = new char[messageBufferSize];
     int bytesReceived;
@@ -96,7 +116,7 @@ void TcpServer::HandleClientConnection(SOCKET clientSocket) {
         // Читання данних від клієнта
         bytesReceived = recv(clientSocket, buffer, messageBufferSize, 0);
         if (bytesReceived > 0) {
-            std::cout << "[Server] Received: " << std::string(buffer, bytesReceived) << std::endl;
+            //std::cout << "[Server] Received: " << std::string(buffer, bytesReceived) << std::endl;
 
             // Надсилаємо клієнту повідомлення назад
             int iSendResult = send(clientSocket, buffer, bytesReceived, 0);
@@ -119,11 +139,9 @@ void TcpServer::HandleClientConnection(SOCKET clientSocket) {
     delete[] buffer;
 }
 
-void TcpServer::Cleanup() {
+void TcpServer::Close() {
     if (ListenSocket != INVALID_SOCKET) {
         closesocket(ListenSocket);
     }
-    if (ClientSocket != INVALID_SOCKET) {
-        closesocket(ClientSocket);
-    }
+    running = false;
 }

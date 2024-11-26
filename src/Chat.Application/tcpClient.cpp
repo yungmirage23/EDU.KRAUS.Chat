@@ -1,9 +1,8 @@
 #include "pch.h"
-#include "tcpClient.h"
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
+#include "tcpClient.h"
 
 
 TcpChatClient::TcpChatClient(int bufferSize) 
@@ -23,7 +22,7 @@ bool TcpChatClient::Send(const char* message) {
         return false;
     }
     else {
-        std::cout << "[Client] Sent " << sbyteCount << " bytes" << std::endl;
+        //std::cout << "[Client] Sent " << sbyteCount << " bytes" << std::endl;
     }
     return true;
 }
@@ -49,9 +48,6 @@ bool TcpChatClient::Connect(char* serverAddress, int port) {
         return false;
     }
 
-    //u_long mode = 1; // 1 = неблокирующий режим
-    //ioctlsocket(clientSocket, FIONBIO, &mode);
-
     sockaddr_in serverAddr = {};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
@@ -65,6 +61,8 @@ bool TcpChatClient::Connect(char* serverAddress, int port) {
 
     running = true;
     receivingTask = std::thread(&TcpChatClient::RunReceivingLoop, this);
+    receivingTask.detach();
+
     return true;
 }
 
