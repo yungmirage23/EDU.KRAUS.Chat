@@ -18,6 +18,9 @@
     <ClInclude Include="tcpServer.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="chatMessage.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Headers">

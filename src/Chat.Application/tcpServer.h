@@ -18,6 +18,10 @@ private:
     std::atomic<bool> running;
     std::thread listeningTask;
     void RunConnectionPulling();
+    /**
+    * Обробка взаємодії з клієнтом.
+    */
+    void HandleClientConnection(SOCKET clientSocket, char* clientAddress, int port);
 
 public:
     /**
@@ -39,11 +43,6 @@ public:
      */
     bool Bind(const std::string& listenAddress, int listenPort);
     bool Listen();
-
-    /**
-     * Обробка взаємодії з клієнтом.
-     */
-    void HandleClientConnection(SOCKET clientSocket, char* clientAddress, int port);
 
     /**
      * Очищення ресурсів.

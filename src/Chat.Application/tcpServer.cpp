@@ -48,6 +48,8 @@ bool TcpServer::Bind(const std::string& listenAddress, int listenPort) {
         closesocket(ListenSocket);
         return false;
     }
+
+    return true;
 }
 
 bool TcpServer::Listen() {

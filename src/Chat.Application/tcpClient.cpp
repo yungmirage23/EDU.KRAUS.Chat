@@ -3,7 +3,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "tcpClient.h"
-
+#include "json.hpp" // Підключаємо JSON-бібліотеку
+#include "chatMessage.h"
 
 TcpChatClient::TcpChatClient(int bufferSize) 
     : clientSocket(INVALID_SOCKET), bufferSize(bufferSize), running(false) {
@@ -14,15 +15,27 @@ TcpChatClient::~TcpChatClient() {
 }
 
 // Sending data to the server
-bool TcpChatClient::Send(const char* message) {
+bool TcpChatClient::Send(const ChatMessage& chatMessage) {
     
-    int sbyteCount = send(clientSocket, message, strlen(message), 0);
+    if (!running) {
+        std::cerr << "[Client] Cannot send message. Not connected to server." << std::endl;
+        return false;
+    }
+    std::string serializedMessage;
+    try {
+        nlohmann::json jsonMessage = chatMessage.ToJson();
+        serializedMessage = jsonMessage.dump(); // Перетворення JSON у рядок
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[Client] Error serrializing message: " << e.what() << std::endl;
+        return false;
+    }
+   
+
+    int sbyteCount = send(clientSocket, serializedMessage.c_str(), serializedMessage.size(), 0);
     if (sbyteCount == SOCKET_ERROR) {
         std::cout << "[Client] Send error: " << WSAGetLastError() << std::endl;
         return false;
-    }
-    else {
-        //std::cout << "[Client] Sent " << sbyteCount << " bytes" << std::endl;
     }
     return true;
 }
@@ -67,15 +80,25 @@ bool TcpChatClient::Connect(char* serverAddress, int port) {
 }
 
 bool TcpChatClient::RunReceivingLoop() {
-
     char* buffer = new char[bufferSize];
     while (running) {
         int bytesReceived = recv(clientSocket, buffer, bufferSize, 0);
         if (bytesReceived > 0) {
-            std::cout << "[Client] Received: " << std::string(buffer, bytesReceived) << std::endl;
+            try {
+                std::string receivedData(buffer, bytesReceived);
+                auto jsonMessage = nlohmann::json::parse(receivedData);
+                ChatMessage chatMessage = ChatMessage::FromJson(jsonMessage);
+                std::cout << "[" << chatMessage.timestamp << "] "
+                    << "[" << chatMessage.username << "] "
+                    << chatMessage.message << std::endl;
+            }
+            catch (const std::exception& e) {
+                std::cerr << "[Client] Error parsing message: " << e.what() << std::endl;
+            }
         }
         else if (bytesReceived == 0 || WSAGetLastError() != WSAEWOULDBLOCK) {
             std::cerr << "[Client] Connection closed or error occurred." << std::endl;
+            running = false;
             break;
         }
     }

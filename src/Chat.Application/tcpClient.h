@@ -5,6 +5,7 @@
 #include <ws2tcpip.h>
 #include <thread>
 #include <atomic>
+#include "chatMessage.h"
 
 class TcpChatClient {
 private:
@@ -24,5 +25,5 @@ public:
 	bool Connect(char* serverAddress, int port);
 	bool Disconnect();
 
-	bool Send(const char* message);
+	bool Send(const ChatMessage& message);
 };
